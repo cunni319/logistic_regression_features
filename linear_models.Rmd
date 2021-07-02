@@ -1,0 +1,153 @@
+---
+title: "linear models"
+author: "Kevin Cunningham"
+date: "7/1/2021"
+output: html_document
+editor_options: 
+  chunk_output_type: inline
+---
+
+
+
+```{r}
+quantile_df <- read.csv("/Users/Kevin/Desktop/Grad school docs and past classes/New_RA_Project_code/PCA/after_quantile_reduced_set.csv")
+```
+
+order the data by sample status
+```{r}
+quantile_df <- quantile_df[order(quantile_df$Sample_Status),]
+```
+
+Add a feature for the sample status. If RA the value will be 1, if control the value will be 0
+```{r}
+quantile_df$Sample_Status_as_numeric <- 1
+```
+
+Last 30 samples need to be changed to 0, all RA is given the value of 1
+```{r}
+for (i in 65:94) {
+  quantile_df[i,1625] <- 0
+}
+#View(quantile_df)
+```
+
+make a dataframe to hold the p values and add the feature names
+```{r}
+logistic_regression_pvalues <- as.data.frame(matrix(data = 0, nrow = 1622, ncol = 2))
+logistic_regression_pvalues$V1 <- feature_names
+colnames(logistic_regression_pvalues) <- cbind("Auto-antibody", "P-value")
+#View(logistic_regression_pvalues)
+```
+
+fill the dataframe with the p values
+```{r}
+for (i in 1:1622) {
+  glm_results <- glm(Sample_Status_as_numeric ~ quantile_df[,i], data = quantile_df, family = "binomial")
+  pvalue_to_add <- coef(summary(glm_results))[2,4]
+  logistic_regression_pvalues[i,2] <- pvalue_to_add
+}
+```
+
+```{r}
+coef(summary(glm_results))
+print(pvalue_to_add)
+```
+
+Sort by p value
+```{r}
+logistic_regression_pvalues <- logistic_regression_pvalues[order(logistic_regression_pvalues$`P-value`),]
+```
+
+Find how many have a p value less than 0.05
+```{r}
+for(i in 1:1622){
+  current_val3 <- logistic_regression_pvalues[i,2]
+  if(current_val3 > 0.05){
+    print(i)
+    print("p value is larger than 0.05")
+    break;
+  }
+}
+```
+
+```{r}
+print(logistic_regression_pvalues[67,1])
+print(logistic_regression_pvalues[67,2])
+```
+
+So there are 66 autoantibodies with p values less than 0.05
+```{r}
+logistic_regression_pvalues_less_than_05 <- logistic_regression_pvalues[1:66,]
+#View(logistic_regression_pvalues_less_than_05)
+```
+
+When gathering all features, be sure to get all features from both RA and Control together. The final matrix should be
+94 X 68
+66 features, sample status, case ids
+Have the data sorted by sample status and add the 
+sample status and case id to the final dataframe for later use.
+```{r}
+ordered_quantile_df <- quantile_df[order(quantile_df$Sample_Status),]
+```
+
+Get the names of all features
+```{r}
+quantile_no_labels_df <- as.data.frame(quantile_df[,1:1622])
+#View(quantile_no_labels_df)
+feature_names <- colnames(quantile_no_labels_df)
+#View(feature_names)
+```
+
+Gather all the features
+```{r}
+number_of_features_to_plot <- 66
+#make a dataframe to hold the names of the features we need
+top_feature_names_to_add <- as.data.frame(matrix(data = 0, nrow = 1, ncol = number_of_features_to_plot))
+for(i in 1:number_of_features_to_plot){
+  feature_to_add <- logistic_regression_pvalues_less_than_05[i,1]
+  #print(feature_to_add)
+  top_feature_names_to_add[1,i] <- feature_to_add
+}
+#View(top_feature_names_to_add)
+#make a dataframe to hold the features
+logistic_regression_features <- as.data.frame(matrix(data = 0, nrow = 94, ncol = number_of_features_to_plot))
+colnames(logistic_regression_features) <- cbind(top_feature_names_to_add)
+#View(logistic_regression_features)
+logistic_regression_features$Sample_Status <- ordered_quantile_df$Sample_Status
+logistic_regression_features$Case_ID <- ordered_quantile_df$Case_ID
+feature_values_to_add <- matrix(data = 0, nrow = 94, ncol = 1)
+feature_names_as_column <- t(feature_names)
+feature_count = 1
+#View(feature_names_as_row)
+for(a in (1:number_of_features_to_plot)){
+  current_feature_to_find <- top_feature_names_to_add[1,a]  
+  for(i in (1:1622)){
+  feature_to_check <- feature_names_as_columnD[1,i]
+    if(current_feature_to_find == feature_to_check){
+      #print(current_feature_to_find)
+      #print(feature_to_check)
+      feature_values_to_add <- ordered_quantile_df[1:94,i]
+      #View(feature_values_to_add)
+      logistic_regression_features[1:94,feature_count] <- feature_values_to_add
+      feature_count = feature_count + 1
+    }
+  }
+}
+#View(logistic_regression_features)
+```
+
+The 66 features plus the sample status and case id is in the
+dataframe "logistic_regression_features" for all 94 samples.
+
+
+
+
+
+
+
+
+
+
+
+
+
